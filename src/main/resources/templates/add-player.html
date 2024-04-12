@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<div class="container row justify-content-center">
+    <div class="col-6">
+        <form action="/players/add" method="post" id="frmCreate">
+            <div class="row">
+                <label class="col-3">Name</label>
+                <input class="col-9" type="text" name="name" id="txtName">
+            </div>
+            <div class="row">
+                <label class="col-3">Date of bird</label>
+                <input class="col-9" type="date" name="dob" id="txtDob">
+            </div>
+            <div class="row">
+                <label class="col-3">Experience</label>
+                <input class="col-9" type="text" name="experience" id="txtExperience">
+            </div>
+            <div class="row">
+                <label class="col-3">Position</label>
+                <select class="col-9" name="sPosition"  id="sPosition">
+                    <option th:each="position : ${positions}" th:value="${position.id}" th:text="${position.name}"></option>
+                </select>
+            </div>
+            <div class="row">
+                <label class="col-3">Location</label>
+                <div class="col-9">
+                    <input type="text" placeholder="Enter address" id="txtAddress">
+                    <select id="txtProvince">
+
+                    </select>
+                    <select id="txtDistrict">
+
+                    </select>
+                    <select id="txtWard">
+
+                    </select>
+                </div>
+            </div>
+            <input type="submit" value="Add">
+        </form>
+    </div>
+</div>
+    <script>
+        let locationSelected = {
+            address: "",
+            provinceId: null,
+            provinceName: null,
+            districtId: null,
+            districtName: null,
+            wardId: null,
+            wardName: null
+        }
+        function getProvinces() {
+            $.ajax(`https://vapi.vnappmob.com/api/province/`)
+                .done((data) => {
+                    let provinces = data.results;
+                    renderProvinces(provinces);
+
+                    // dang ki su kien onchange cho province
+                    registerProvinceChange();
+
+
+                    // Lay du lieu lan dau cho province - district - ward
+                    locationSelected.provinceId = provinces[0].province_id;
+                    locationSelected.provinceName = provinces[0].province_name;
+
+                    getDistrictByProvinceId(locationSelected.provinceId);
+                });
+        }
+        function getDistrictByProvinceId(provinceId) {
+            $.ajax(`https://vapi.vnappmob.com/api/province/district/${provinceId}`)
+                .done((data) => {
+                    let districts = data.results;
+                    renderDistricts(districts)
+
+                    locationSelected.districtId = districts[0].district_id;
+                    locationSelected.districtName = districts[0].district_name;
+
+                    registerDistrictChange();
+                    getWardByDistrictId(locationSelected.districtId)
+                });
+        }
+
+        function renderProvinces(provinces){
+            $("#txtProvince").empty();
+            for (let i = 0; i < provinces.length; i++) {
+                $("#txtProvince").append(`<option value="${provinces[i].province_id}">${provinces[i].province_name}</option>`)
+            }
+        }
+        function renderWards(wards){
+            $("#txtWard").empty();
+            for (let i = 0; i < wards.length; i++) {
+                $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+            }
+        }
+        function renderDistricts(districts){
+            $("#txtDistrict").empty();
+            for (let i = 0; i < districts.length; i++) {
+                $("#txtDistrict").append(`<option value="${districts[i].district_id}">${districts[i].district_name}</option>`)
+            }
+        }
+
+        function getWardByDistrictId(districtId) {
+            $.ajax(`https://vapi.vnappmob.com/api/province/ward/${districtId}`)
+                .done((data) => {
+                    let wards = data.results;
+                    locationSelected.wardId = wards[0].ward_id;
+                    locationSelected.wardName = wards[0].ward_name;
+                    renderWards(wards);
+                    registerWardChange();
+                });
+        }
+        function registerDistrictChange()  {
+            $("#txtDistrict").on("change", function () {
+                locationSelected.districtId = $(this).val();
+                locationSelected.districtName = $(this).find("option:selected").text();
+                getWardByDistrictId(locationSelected.districtId)
+            })
+        }
+        function registerProvinceChange() {
+            $("#txtProvince").on("change", function () {
+
+                locationSelected.provinceId = $(this).val();
+                locationSelected.provinceName = $(this).find("option:selected").text();
+
+                getDistrictByProvinceId(locationSelected.provinceId);
+
+            });
+        }
+
+        function registerWardChange(){
+            $("#txtWard").on("change", function () {
+                locationSelected.wardId = $(this).val();
+                locationSelected.wardName = $(this).find("option:selected").text();
+            });
+        }
+
+
+
+        $(document).ready(function () {
+            getProvinces();
+            $('#frmCreate').submit(function (e){
+                e.preventDefault();
+                /*
+                // -- De gianh bai sau gui JSON
+                let player = {
+                    name: $('#txtName').val(),
+                    dob: $('#txtDob').val(),
+                    experience: $('#txtExperience').val(),
+                    address: $('#txtAddress').val(),
+                    provinceId: locationSelected.provinceId,
+                    provinceName: locationSelected.provinceName,
+                    districtId: locationSelected.districtId,
+                    districtName: locationSelected.districtName,
+                    wardId: locationSelected.wardId,
+                    wardName: locationSelected.wardName
+                }
+                */
+                let form = new FormData();
+                form.append("name", $('#txtName').val());
+                form.append("dob", $('#txtDob').val());
+                form.append("experience", $('#txtExperience').val());
+                form.append("address", $('#txtAddress').val());
+
+                form.append("positionId", $("#sPosition").val());
+                form.append("provinceId", locationSelected.provinceId);
+                form.append("provinceName", locationSelected.provinceName);
+                form.append("districtId", locationSelected.districtId);
+                form.append("districtName", locationSelected.districtName);
+                form.append("wardId", locationSelected.wardId);
+                form.append("wardName", locationSelected.wardName);
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/players/add',
+                    data: form,
+                    processData: false,
+                    contentType: false
+                }).done(function (data) {
+                    // window.location.href = '/players';
+
+                    console.log(data)
+                });
+            })
+        });
+    </script>
+</body>
+</html>

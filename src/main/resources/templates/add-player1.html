@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+</head>
+<body>
+
+<div class="container row justify-content-center">
+    <div class="col-6">
+        <form action="/players/add" method="post">
+            <div class="row">
+                <label class="col-3">Name</label>
+                <input class="col-9" type="text" name="name">
+            </div>
+            <div class="row">
+                <label class="col-3">Date of bird</label>
+                <input class="col-9" type="date" name="dob">
+            </div>
+            <div class="row">
+                <label class="col-3">Experience</label>
+                <input class="col-9" type="text" name="experience">
+            </div>
+            <div class="row">
+                <label class="col-3">Position</label>
+                <select class="col-9" name="positionId">
+                    <option th:each="position : ${positions}" th:value="${position.id}" th:text="${position.name}"></option>
+                </select>
+            </div>
+            <div class="row">
+                <label class="col-3">Location</label>
+                <div class="col-9">
+                    <input type="text" placeholder="Enter address" id="txtAddress">
+                    <select id="txtProvince">
+
+                    </select>
+                    <select id="txtDistrict">
+
+                    </select>
+                    <select id="txtWard">
+
+                    </select>
+                </div>
+            </div>
+            <input type="submit" value="Add">
+        </form>
+    </div>
+</div>
+    <script>
+        let locationSelected = {
+            address: "",
+            provinceId: null,
+            provinceName: null,
+            districtId: null,
+            districtName: null,
+            wardId: null,
+            wardName: null
+        }
+        $(document).ready(function () {
+
+            function getDistrictByProvinceId(provinceId) {
+                $.ajax(`https://vapi.vnappmob.com/api/province/district/${locationSelected.provinceId}`)
+                    .done((data) => {
+                        let districts = data.results;
+                        for (let i = 0; i < districts.length; i++) {
+                            $("#txtDistrict").append(`<option value="${districts[i].district_id}">${districts[i].district_name}</option>`)
+                        }
+
+                        locationSelected.districtId = districts[0].district_id;
+                        locationSelected.districtName = districts[0].district_name;
+
+                        $("#txtDistrict").on("change", function () {
+                            $("#txtWard").empty();
+                            locationSelected.districtId = $(this).val();
+                            locationSelected.districtName = $(this).find("option:selected").text();
+                            $.ajax(`https://vapi.vnappmob.com/api/province/ward/${locationSelected.districtId}`)
+                                .done((data) => {
+                                    let wards = data.results;
+                                    locationSelected.wardId = wards[0].ward_id;
+                                    locationSelected.wardName = wards[0].ward_name;
+                                    for (let i = 0; i < wards.length; i++) {
+                                        $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                                    }
+                                    $("#txtWard").on("change", function () {
+                                        locationSelected.wardId = $(this).val();
+                                        locationSelected.wardName = $(this).find("option:selected").text();
+                                    });
+                                });
+                        })
+                        $.ajax(`https://vapi.vnappmob.com/api/province/ward/${locationSelected.districtId}`)
+                            .done((data) => {
+                                let wards = data.results;
+                                locationSelected.wardId = wards[0].ward_id;
+                                locationSelected.wardName = wards[0].ward_name;
+                                for (let i = 0; i < wards.length; i++) {
+                                    $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                                }
+                                $("#txtWard").on("change", function () {
+                                    locationSelected.wardId = $(this).val();
+                                    locationSelected.wardName = $(this).find("option:selected").text();
+                                });
+                            });
+                    });
+            }
+
+
+            function getWardByDistrictId(districtId) {
+                $.ajax(`https://vapi.vnappmob.com/api/province/ward/${districtId}`)
+                    .done((data) => {
+                        let wards = data.results;
+                        locationSelected.wardId = wards[0].ward_id;
+                        locationSelected.wardName = wards[0].ward_name;
+                        for (let i = 0; i < wards.length; i++) {
+                            $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                        }
+                        $("#txtWard").on("change", function () {
+                            locationSelected.wardId = $(this).val();
+                            locationSelected.wardName = $(this).find("option:selected").text();
+                        });
+                    });
+            }
+            $.ajax(`https://vapi.vnappmob.com/api/province/`)
+                .done((data) => {
+                    let provinces = data.results;
+                    for (let i = 0; i < provinces.length; i++) {
+                        $("#txtProvince").append(`<option value="${provinces[i].province_id}">${provinces[i].province_name}</option>`)
+                    }
+
+                    // dang ki su kien onchange cho province
+                    $("#txtProvince").on("change", function () {
+                        $("#txtDistrict").empty();
+                        locationSelected.provinceId = $(this).val();
+                        locationSelected.provinceName = $(this).find("option:selected").text();
+                        $.ajax(`https://vapi.vnappmob.com/api/province/district/${locationSelected.provinceId}`)
+                            .done((data) => {
+                                let districts = data.results;
+                                for (let i = 0; i < districts.length; i++) {
+                                    $("#txtDistrict").append(`<option value="${districts[i].district_id}">${districts[i].district_name}</option>`)
+                                }
+                                // dang ki su kien onchange cho district
+                                $("#txtDistrict").on("change", function () {
+                                    $("#txtWard").empty();
+                                    locationSelected.districtId = $(this).val();
+                                    locationSelected.districtName = $(this).find("option:selected").text();
+                                    $.ajax(`https://vapi.vnappmob.com/api/province/ward/${locationSelected.districtId}`)
+                                        .done((data) => {
+                                            let wards = data.results;
+                                            for (let i = 0; i < wards.length; i++) {
+                                                $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                                            }
+                                        });
+                                })
+
+                                locationSelected.districtId = districts[0].district_id;
+                                locationSelected.districtName = districts[0].district_name;
+                                $("#txtWard").empty();
+                                $.ajax(`https://vapi.vnappmob.com/api/province/ward/${locationSelected.districtId}`)
+                                    .done((data) => {
+                                        let wards = data.results;
+                                        for (let i = 0; i < wards.length; i++) {
+                                            $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                                        }
+                                    });
+                            });
+
+                    });
+
+
+                    // Lay du lieu lan dau cho province - district - ward
+                    locationSelected.provinceId = provinces[0].province_id;
+                    locationSelected.provinceName = provinces[0].province_name;
+                    $.ajax(`https://vapi.vnappmob.com/api/province/district/${locationSelected.provinceId}`)
+                        .done((data) => {
+                            let districts = data.results;
+                            for (let i = 0; i < districts.length; i++) {
+                                $("#txtDistrict").append(`<option value="${districts[i].district_id}">${districts[i].district_name}</option>`)
+                            }
+
+                            locationSelected.districtId = districts[0].district_id;
+                            locationSelected.districtName = districts[0].district_name;
+
+                            $("#txtDistrict").on("change", function () {
+                                $("#txtWard").empty();
+                                locationSelected.districtId = $(this).val();
+                                locationSelected.districtName = $(this).find("option:selected").text();
+                                $.ajax(`https://vapi.vnappmob.com/api/province/ward/${locationSelected.districtId}`)
+                                    .done((data) => {
+                                        let wards = data.results;
+                                        locationSelected.wardId = wards[0].ward_id;
+                                        locationSelected.wardName = wards[0].ward_name;
+                                        for (let i = 0; i < wards.length; i++) {
+                                            $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                                        }
+                                        $("#txtWard").on("change", function () {
+                                            locationSelected.wardId = $(this).val();
+                                            locationSelected.wardName = $(this).find("option:selected").text();
+                                        });
+                                    });
+                            })
+                            // getWardByDistrictId(locationSelected.districtId)
+                            $.ajax(`https://vapi.vnappmob.com/api/province/ward/${locationSelected.districtId}`)
+                                .done((data) => {
+                                    let wards = data.results;
+                                    locationSelected.wardId = wards[0].ward_id;
+                                    locationSelected.wardName = wards[0].ward_name;
+                                    for (let i = 0; i < wards.length; i++) {
+                                        $("#txtWard").append(`<option value="${wards[i].ward_id}">${wards[i].ward_name}</option>`)
+                                    }
+                                    $("#txtWard").on("change", function () {
+                                        locationSelected.wardId = $(this).val();
+                                        locationSelected.wardName = $(this).find("option:selected").text();
+                                    });
+                                });
+                            });
+
+                });
+        });
+    </script>
+</body>
+</html>
